@@ -1,15 +1,4 @@
-# from urllib.parse import urlencode
 import grpc
-# import logging
-# from logging import LoggerAdapter
-# #import logstash
-# import requests
-# import sys
-# #import toml
-# import urllib.request
-# import json
-# import base64
-
 from woocommerce import API
 
 '''imports for usability server'''
@@ -26,7 +15,7 @@ def readFromTeamson (callType, orderId, logger):
     consumerKey = 'ck_ec85a078781e4d60bb175c61c24fac0d8a224dd1'
     consumerSecret = 'cs_05d24b657774ad736cd69058d003a3f1d3ea4c84'
     optionMap = {"orders": {"route": "","version": "wc/v3/orders", 'params': "&per_page=100&status=processing", "pagination": True},
-    "stocks": {"route": "","version":  "wc/v3/products", 'params': "&per_page=100", "pagination": False},
+    "stocks": {"route": "","version":  "wc/v3/products", 'params': "&per_page=100", "pagination": True},
     "tracking": { "version":  "wc/v3", 'params': "", "pagination": False}}
     optionMap['tracking']['route'] = "orders/" + orderId + "/shipment-trackings"
     options = optionMap[callType]
@@ -50,7 +39,7 @@ def readFromTeamson (callType, orderId, logger):
         data[len(data):] += pageData
         if options['pagination']:
             try:
-                pageData = wcapi.get(route + "?page=" + str(page) + params).json()
+                pageData = wcapi.get(options['route'] + "?page=" + str(page) + options['params']).json()
             except:
                 logger.error("Failed to read next page from Teamson...")
                 pageData = []
@@ -58,6 +47,7 @@ def readFromTeamson (callType, orderId, logger):
             pageData = []
     return data
 
+'''---------------------------- Read Inventory from SAP -------------------------------------'''
 def readSAPStock(stubGetStockInfoService, logger):
 
     stockInfoRequest = GetStockInfoRequest_pb2.GetStockInfoRequest(item_scope='ALL_ITEMS',
@@ -104,24 +94,19 @@ def readSAPStock(stubGetStockInfoService, logger):
     '''get lowest child stocks for Sets (Bundles)'''
     for SAP_Item in stockInfos:
         if SAP_Item.is_active and SAP_Item.is_component:
-            itemTotal = 0
-            lowestItem = ''
-            whsDict = {}
+            SAPStockDict[SAP_Item.item_code] = {}
             for childItem in SAP_Item.child_items:
-                if childItem.is_active:
-                    childItemAvailable = childItem.warehouse_stock[1].on_hand - childItem.warehouse_stock[1].commited
-                if childItemAvailable > 0 and itemTotal == 0 and lowestItem == '':
-                    itemTotal = childItemAvailable
-                    lowestItem = childItem.item_code
-                elif childItemAvailable > 0 and childItemAvailable < itemTotal:
-                    itemTotal = childItemAvailable
-                    lowestItem = childItem.item_code
-                elif childItemAvailable == 0:
-                    itemTotal = childItemAvailable
-                    lowestItem = childItem.item_code
-            SAPStockDict[SAP_Item.item_code] = SAPStockDict[lowestItem]
+                for warehouse  in  SAPStockDict[childItem.item_code]:
+                    if childItem.is_active:
+                        childItemWhsQty = SAPStockDict[childItem.item_code][warehouse]
+                        if warehouse in SAPStockDict[SAP_Item.item_code]:
+                            if childItemWhsQty < SAPStockDict[SAP_Item.item_code][warehouse]:
+                                SAPStockDict[SAP_Item.item_code][warehouse] = childItemWhsQty
+                        else:
+                            SAPStockDict[SAP_Item.item_code][warehouse] = childItemWhsQty
     return SAPStockDict
 
+'''---------------------- read Tracking from SAP --------------------------'''
 def readSAPTracking (stubGetDeliveryOrders, stubGetTrackingNumber):
     DNRequest = GetBasicDeliveryOrdersRequest_pb2.GetBasicDeliveryOrdersRequest()
     DNRequest.filter_uploaded_lines=False
@@ -145,6 +130,7 @@ def readSAPTracking (stubGetDeliveryOrders, stubGetTrackingNumber):
                DNS += [{'DN':DN,'trackingNum':trackingNum}]
     return DNS
 
+'''------------------- write order to SAP -----------------------'''
 def writeSAPOrder (stubInsertSalesOrder,SAPOrder,logger):
     logger.debug('insert order for order:  ' + SAPOrder.order_number)
     try:
@@ -155,6 +141,7 @@ def writeSAPOrder (stubInsertSalesOrder,SAPOrder,logger):
     else:
         logger.info("INFO - Order successfully imported: " + SAPOrder.customer_order_number)
 
+'''------- write stocks anfd tracking to Teamson.co.uk -----------------'''
 def writeToTeamson(callType, id, data, logger):
 
     consumerKey = 'ck_ec85a078781e4d60bb175c61c24fac0d8a224dd1'
@@ -173,7 +160,7 @@ def writeToTeamson(callType, id, data, logger):
     try:
         ret = wcapi.post(options["route"], data).json()
     except:
-        logger.error("ERROR - Updating Tracking in Teamson: order: " + str(id) )
+        logger.error("ERROR - Updating  in Teamson: ID: " + str(id) )
     else:
-        logger.info('SUCCESS - Tracking Imported: order: ' + str(id))
+        logger.debug('SUCCESS - Teamson import : ID: ' + str(id) )
     return ret

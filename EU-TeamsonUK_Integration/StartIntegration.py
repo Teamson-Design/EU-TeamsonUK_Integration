@@ -14,30 +14,33 @@ from uk.networking.services.ar.sales_order import GetBasicSalesOrderInfoService_
     InsertBasicSalesOrderService_pb2_grpc
 from uk.networking.services.item.stock import GetStockInfoService_pb2_grpc
 
-
+'''------------import the new orders into SAP---------------'''
 def importOrders(confug, stubGetBasicSalesOrderInfo, stubInsertSalesOrder, businessPartner, logger):
     orders = readFromTeamson('orders', '', logger)
     for order in orders:
         SAPOrder = orderMap(config, order, businessPartner, logger)
-        businessPartner = SAPOrder.business_partner
-        customerOrderNumber = SAPOrder.customer_order_number
-        request = GetSalesOrderStatusRequest_pb2.GetSalesOrderStatusByCustomerInfoRequest(
-                business_partner=businessPartner, customer_order_number=customerOrderNumber)
-        try:
-            response = stubGetBasicSalesOrderInfo.GetSalesOrderStatusByCustomerInfo(request)
-        except grpc.RpcError:
-            logger.error("Failed to read order status from SAP...")
+        if SAPOrder == '':
+            logger.error("Failed to Map order for SAP: " + '#' + str(order['id']))
         else:
-            logger.debug("order status successfully read from SAP... ")
-            if (response.order_status == 0) & (len(order) > 0):
-                '''create the order(s)'''
-                writeSAPOrder (stubInsertSalesOrder, SAPOrder, logger)
-            elif (response.order_status != 0) & (len(order) > 0):
-                logger.error("Order already exist or is cancelled: " + customerOrderNumber)
+            businessPartner = SAPOrder.business_partner
+            customerOrderNumber = SAPOrder.customer_order_number
+            request = GetSalesOrderStatusRequest_pb2.GetSalesOrderStatusByCustomerInfoRequest(
+                    business_partner=businessPartner, customer_order_number=customerOrderNumber)
+            try:
+                response = stubGetBasicSalesOrderInfo.GetSalesOrderStatusByCustomerInfo(request)
+            except grpc.RpcError:
+                logger.error("Failed to read order status from SAP...")
+            else:
+                logger.debug("order status successfully read from SAP... ")
+                if (response.order_status == 0) & (len(order) > 0):
+                    '''create the order(s)'''
+                    writeSAPOrder (stubInsertSalesOrder, SAPOrder, logger)
+                elif (response.order_status != 0) & (len(order) > 0):
+                    logger.error("Order already exist or is cancelled: " + customerOrderNumber)
 
     logger.info("Inserted all orders")
 
-
+'''-----------Update stock quantities in Teamson------------'''
 def updateStockQty(stubGetStockInfoService, logger):
     SAPStockDict = readSAPStock(stubGetStockInfoService, logger)
     TeamsonStocks = readFromTeamson('stocks', '', logger)
@@ -52,6 +55,9 @@ def updateStockQty(stubGetStockInfoService, logger):
                 useBrays = True
             elif tag['slug'] == 'oversized-eu':
                 useFSS = True
+        '''---- 14/07/20 SD All stock from Brays only ----'''
+        if not doNotUpdate:
+            useBrays = True
         if stock['sku'] in SAPStockDict and not doNotUpdate:
             if useBrays:
                 if stock['stock_quantity'] != SAPStockDict[stock['sku']]['BRAYSAdj']:
@@ -64,6 +70,7 @@ def updateStockQty(stubGetStockInfoService, logger):
                 if stock['stock_quantity'] != SAPStockDict[stock['sku']]['totalAdj']:
                     data = {"stock_quantity": SAPStockDict[stock['sku']]['totalAdj']}
                     ret = writeToTeamson ('stocks', stock['id'], data, logger)
+
         elif doNotUpdate:
              logger.debug("sku id tagged as 'do not update':"  + stock['sku'])
         else:
@@ -71,6 +78,7 @@ def updateStockQty(stubGetStockInfoService, logger):
 
     logger.info("Updated stocks")
 
+'''---------------Update tracking in Teamson----------------'''
 def importTracking(stubGetTrackingNumber, stubGetTrackingService, stubGetDeliveryOrders):
     DNS = readSAPTracking (stubGetDeliveryOrders, stubGetTrackingNumber)
     for trackingDict in DNS:
@@ -103,11 +111,11 @@ def importTracking(stubGetTrackingNumber, stubGetTrackingService, stubGetDeliver
 toml_file = "C:/eCommerce Connections/EMEA/UK/Teamson UK/integration_config.toml"
 config = toml.load(toml_file)
 businessPartner = config['businessPartner']
-channelMap = config['ChannelMap']
+#channelMap = config['ChannelMap']
 shippingMap = config['ShippingMap']
 revShipMap = config['RevShipMap']
 
-'''------------only change here-------------'''
+'''------------set up logging file----------'''
 logging_file = config['Teamson_logging_file']
 
 '''------------account server info---down--------'''
@@ -131,11 +139,8 @@ try:
     stubGetStockInfoService = GetStockInfoService_pb2_grpc.GetStockInfoServiceStub(channel)
     stubGetBasicSalesOrderInfo = GetBasicSalesOrderInfoService_pb2_grpc.GetBasicSalesOrderInfoServiceStub(channel)
     stubInsertSalesOrder = InsertBasicSalesOrderService_pb2_grpc.InsertBasicSalesOrderServiceStub(channel)
-
     stubGetDeliveryOrders = GetBasicDeliveryOrdersService_pb2_grpc.GetBasicDeliveryOrdersServiceStub(channel)
-
     stubGetTrackingNumber = GetDeliveryTrackingService_pb2_grpc.GetDeliveryTrackingServiceStub(channel)
-
     stubGetTrackingService = GetDeliveryTrackingService_pb2_grpc.GetDeliveryTrackingServiceStub(channel)
 
 except grpc.RpcError:
