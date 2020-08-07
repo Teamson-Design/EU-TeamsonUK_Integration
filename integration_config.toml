@@ -1,0 +1,153 @@
+usabilityPort = '9875'
+usabilityHost = '172.16.1.6:'
+loggingDirectory = 'C:\eCommerce Connections\Logs'
+Teamson_logging_file = 'C:\eCommerce Connections\Logs\emea_uk_Teamson_logs.log'
+businessPartner = 'DIRECT16'
+
+#Stock Buffers
+weekendStockBuffer = 3
+weekdayStockBuffer = 3
+
+#Lists for shipping rules
+HeavySkuList = "('HF36501AA-UK','HF42408AA-UK')"
+OversizedSkuList = "('HF09501AA-UK','HF11501AA-UK','HF11802AA-UK','HF25601BA-UK','HF29308AA-UK','HF30181BA-UK','HF30900BA-UK','HF31188AA-UK','HF31701AA-UK','HF34501BA-UK','HF35708AA-UK','HF35708AA-UK','HF42191AA-UK','HF42708AA-UK','HF45701AA-S-UK','HF48708AA-UK','ST-H100014','ST-H100024','VNF-00035','VNF-00079B','VNF-00079W','VNF-00081','PT-OF0005','VNF-00026-UK')"
+EUSkuList = "('HF09501AA-EU','HF11501AA-EU','HF11802AA-EU','HF25601BA-EU','HF29308AA-EU','HF30181BA-EU','HF30900BA-EU','HF31188AA-EU','HF31701AA-EU','HF34501BA-EU','HF35708AA-EU','HF36501AA-EU','HF42191AA-EU','HF42408AA-EU','HF42708AA-EU','HF45701AA-S-EU','HF48708AA-EU','ST-H100014','ST-H100024','VNF-00035','VNF-00079B','VNF-00079W','VNF-00081','PT-OF0005','VNF-00026-UK')"
+RemotePostcodeList = "('AB','BT','FK','GY','HS','IM','IV','JE','KA','KW','PA','PH','ZE')"
+
+#Config for Integration by channel/site information
+orderSitesList = ['HomeUK','KidsUK']
+stockSitesList = ['HomeUK','KidsUK']
+[sites]
+	[sites.'HomeUK']
+	'url' = 'https://teamson.co.uk'
+	'clientKey' = 'ck_c12651919962fbcf4a4a5e6e722d8686a3064746'
+	'clientSecret' = 'cs_0d2c7fecaf017aa94d41eeacf327608784e522ed'
+
+	[sites.'KidsUK']
+	'url' = 'https://teamsonkids.co.uk'
+	'clientKey' = 'ck_21edf345b78e5aa52c3108feb201f2f14a128c0d'
+	'clientSecret' = 'cs_e3a5d699548eb8aaca33f4d8dd69017e107cf11c'
+
+[ShippingMap]
+
+	[ShippingMap.'Other courier']
+	'3 to 5 days' = 4 
+
+	[ShippingMap.'DPD']
+	'Next Day' = 3
+	'Two Day' = 4 
+	'International Classic (Road)' = 15
+	'Parcel ND (Before 10:30)' = 16
+	'Parcel (Sat)' = 17
+	'Parcel ND (Before 12)' = 18
+	'Prime Domestic Seller2Home' = 28
+
+	[ShippingMap.'UK DPD']
+	'Next Day' = 3
+	'Two Day' = 4 
+	'International Classic (Road)' = 15
+	'Parcel ND (Before 10:30)' = 16
+	'Parcel (Sat)' = 17
+	'Parcel ND (Before 12)' = 18
+	'Prime Domestic Seller2Home' = 28
+
+	[ShippingMap.'UK Freight']
+	'Global Freight' = 7 
+
+	[ShippingMap.'UK Pallets']
+	'Dachser' = 8 
+	'Dachser on site' = 36 
+
+	[ShippingMap.'UK DHL']
+	'Next Day' = 9 
+	'Europe 2-3 Day' = 10 
+	'Europe Next Day' = 11 
+	'ROW 2-3 Day' = 12 
+
+	[ShippingMap.'UK Tuffnells']
+	'Next Day' = 13
+	'Three Day' = 14
+
+	[ShippingMap.'NL DPD']
+	'Classic Home' = 19
+	'Classic B2B' = 20
+
+	[ShippingMap.'NL UPS']
+	'Standard Single' = 21
+	'Express Saver' = 25
+
+	[ShippingMap.'UK XDP']
+	'Next Day' = 29
+	'2-3 Day' = 30
+	'2 Man 2 Day' = 31
+
+[RevShipMap]
+	[RevShipMap.3]
+	Carrier = 'UK DPD' 
+	Class = 'Next Day'
+	[RevShipMap.4]
+	Carrier = 'UK DPD' 
+	Class = 'Two Day'
+	[RevShipMap.15]
+	Carrier = 'UK DPD' 
+	Class = 'International Classic (Road)'
+	[RevShipMap.16]
+	Carrier = 'UK DPD'
+	Class = 'Parcel ND (Before 10:30)'
+	[RevShipMap.17] 
+	Carrier = 'UK DPD'
+	Class = 'Parcel (Sat)'
+	[RevShipMap.18]
+	Carrier = 'UK DPD'
+	Class='Parcel ND (Before 12)'
+	[RevShipMap.28]
+	Carrier = 'UK DPD'
+	Class = 'Prime Domestic Seller2Home'
+	[RevShipMap.7]
+	Carrier = 'UK Freight'
+	Class = 'Global Freight'
+	[RevShipMap.8]	
+	Carrier = 'UK Pallets'
+	Class = 'Dachser'
+	[RevShipMap.9]
+	Carrier = 'UK DHL'
+	Class = 'Next Day'
+	[RevShipMap.10]
+	Carrier = 'UK DHL'
+	Class = 'Europe 2-3 Day'
+	[RevShipMap.11]
+	Carrier = 'UK DHL'
+	Class = 'Europe Next Day'
+	[RevShipMap.12]
+	Carrier = 'UK DHL'
+	Class = 'ROW 2-3 Day'
+	[RevShipMap.13]
+	Carrier = 'UK Tuffnells'
+	Class = 'Next Day'
+	[RevShipMap.14]
+	Carrier = 'UK Tuffnells'
+	Class = 'Three Day'
+	[RevShipMap.19]
+	Carrier = 'NL DPD'
+	Class = 'Classic Home'
+	[RevShipMap.20]
+	Carrier = 'NL DPD'
+	Class = 'Classic B2B'
+	[RevShipMap.21]
+	Carrier = 'NL UPS'
+	Class = 'Standard Single'
+	[RevShipMap.25]
+	Carrier = 'NL UPS'
+	Class = 'Express Saver'
+	[RevShipMap.29]
+	Carrier = 'UK XDP'
+	Class = 'Next Day'
+	[RevShipMap.30]
+	Carrier = 'UK XDP'
+	Class = '2-3 Day'
+	[RevShipMap.31]
+	Carrier = 'UK XDP'
+	Class = '2 Man 2 Day'
+	[RevShipMap.36]	
+	Carrier = 'UK Pallets'
+	Class = 'Dachser on site'

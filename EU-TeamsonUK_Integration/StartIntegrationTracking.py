@@ -163,10 +163,10 @@ try:
 except grpc.RpcError:
     logger.error("channels... failed: ")
     sys.exit(0)
-'''------------import the new orders into SAP---------------'''
-importOrders(config, stubGetBasicSalesOrderInfo, stubInsertSalesOrder, businessPartner, logger)
-'''-----------Update stock quantities in Teamson------------'''
-updateStockQty(config, stubGetStockInfoService, logger)
-# '''---------------Update tracking in Teamson----------------'''
-# importTracking(config, stubGetTrackingNumber, stubGetTrackingService, stubGetDeliveryOrders)
+# '''------------import the new orders into SAP---------------'''
+# importOrders(config, stubGetBasicSalesOrderInfo, stubInsertSalesOrder, businessPartner, logger)
+# '''-----------Update stock quantities in Teamson------------'''
+# updateStockQty(config, stubGetStockInfoService, logger)
+'''---------------Update tracking in Teamson----------------'''
+importTracking(config, stubGetTrackingNumber, stubGetTrackingService, stubGetDeliveryOrders)
 

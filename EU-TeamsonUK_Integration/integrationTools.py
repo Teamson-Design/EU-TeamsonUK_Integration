@@ -1,4 +1,4 @@
-import grpc
+import grpc, requests, sys, json
 from woocommerce import API
 
 '''imports for usability server'''
@@ -11,35 +11,49 @@ from uk.networking.requests.item.stock import GetStockInfoRequest_pb2
 from datetime import datetime
 
 ''' Read from Teamson: Orders, Stock, Tracking'''
-def readFromTeamson (callType, orderId, logger):
-    consumerKey = 'ck_ec85a078781e4d60bb175c61c24fac0d8a224dd1'
-    consumerSecret = 'cs_05d24b657774ad736cd69058d003a3f1d3ea4c84'
+def readFromTeamson (config, site, callType, orderId, logger):
     optionMap = {"orders": {"route": "","version": "wc/v3/orders", 'params': "&per_page=100&status=processing", "pagination": True},
     "stocks": {"route": "","version":  "wc/v3/products", 'params': "&per_page=100", "pagination": True},
     "tracking": { "version":  "wc/v3", 'params': "", "pagination": False}}
     optionMap['tracking']['route'] = "orders/" + orderId + "/shipment-trackings"
     options = optionMap[callType]
-
     wcapi = API(
-        url="https://teamson.co.uk",
-        consumer_key=consumerKey,
-        consumer_secret=consumerSecret,
+        url = config['sites'][site]['url'],
+        consumer_key=config['sites'][site]['clientKey'],
+        consumer_secret=config['sites'][site]['clientSecret'],
         wp_api=True,
         version=options['version']
     )
     page = 1
     data = []
-    pageData = []
     try:
-        pageData = wcapi.get(options['route'] + "?page=" + str(page) + options['params']).json()
-    except:
+        print(site)
+        print(callType)
+        print(options['route'])
+        print(page)
+        print(options['params'])
+        pageData = wcapi.get(options['route'] + "?page=" + str(page) + options['params'])
+        print (pageData)
+        pageData = pageData.json()
+        print(pageData)
+    except requests.exceptions.HTTPError as err:
         logger.error("Failed to read data from Teamson...")
+        sys.err(0)
+    if 'data' in pageData:
+        logger.error("Failed to read data from Teamson, error code:" + str(pageData['data']['status']))
+        pageData = []
     while pageData != []:
         page += 1
         data[len(data):] += pageData
         if options['pagination']:
             try:
+                print(site)
+                print(callType)
+                print(options['route'])
+                print(page)
+                print(options['params'])
                 pageData = wcapi.get(options['route'] + "?page=" + str(page) + options['params']).json()
+                print(pageData)
             except:
                 logger.error("Failed to read next page from Teamson...")
                 pageData = []
@@ -48,7 +62,7 @@ def readFromTeamson (callType, orderId, logger):
     return data
 
 '''---------------------------- Read Inventory from SAP -------------------------------------'''
-def readSAPStock(stubGetStockInfoService, logger):
+def readSAPStock(config, stubGetStockInfoService, logger):
 
     stockInfoRequest = GetStockInfoRequest_pb2.GetStockInfoRequest(item_scope='ALL_ITEMS',
                                                                    bom_handler='SPECIFIC_WAREHOUSE',
@@ -59,13 +73,12 @@ def readSAPStock(stubGetStockInfoService, logger):
         logger.error("Failed to read Stock values from SAP..." )
     else:
         logger.debug("Stock values successfully read from SAP... " )
-
     '''Calculate Buffer adjustment 10 over the weekend (midday friday(4) to midday Monday(0)) and  5 during the week'''
     weekday = datetime.now().weekday()
     hour = datetime.now().timetuple()[3]
-    stockBuffer = 5 # weekday value
+    stockBuffer = config['weekdayStockBuffer'] # weekday value
     if (weekday >= 4 and hour >= 12) or (weekday == 0 and hour <= 12):
-        stockBuffer = 10 # Weekend value
+        stockBuffer = config['weekendStockBuffer'] # Weekend value
 
     '''loop through all stock items in SAP'''
     SAPStockDict = {}
@@ -110,7 +123,7 @@ def readSAPStock(stubGetStockInfoService, logger):
 def readSAPTracking (stubGetDeliveryOrders, stubGetTrackingNumber):
     DNRequest = GetBasicDeliveryOrdersRequest_pb2.GetBasicDeliveryOrdersRequest()
     DNRequest.filter_uploaded_lines=False
-    DNRequest.specified_statuses.extend([0])  # 0-'OPEN' and/or 1-'CLOSED'
+    DNRequest.specified_statuses.extend([0])  # 0-'OPEN'
     DNRequest.specified_warehouses.extend(['FSS', 'Brays'])
     DNRequest.specified_order_types.extend([0])  # 'ITEM'
     #DNRequest.specified_customer_orders.update(customerOrders)  # 'cust ref'
@@ -126,7 +139,7 @@ def readSAPTracking (stubGetDeliveryOrders, stubGetTrackingNumber):
                 (order_number=DN.order_number)
             TrackingResponse = stubGetTrackingNumber.GetDeliveryTrackingByOrderNumber(TrackingRequest)
             trackingNum = TrackingResponse.tracking_number
-            if trackingNum != "":
+            if trackingNum != "" and len(trackingNum) > 4 :
                DNS += [{'DN':DN,'trackingNum':trackingNum}]
     return DNS
 
@@ -142,21 +155,20 @@ def writeSAPOrder (stubInsertSalesOrder,SAPOrder,logger):
         logger.info("INFO - Order successfully imported: " + SAPOrder.customer_order_number)
 
 '''------- write stocks anfd tracking to Teamson.co.uk -----------------'''
-def writeToTeamson(callType, id, data, logger):
-
-    consumerKey = 'ck_ec85a078781e4d60bb175c61c24fac0d8a224dd1'
-    consumerSecret = 'cs_05d24b657774ad736cd69058d003a3f1d3ea4c84'
-    optionMap = {"stocks": {"version": "wc/v3"}, "tracking": {"version": "wc/v3"}}
+def writeToTeamson(config, site, callType, id, data, logger):
+    optionMap = {"orders": {"version": "wc/v3"},"stocks": {"version": "wc/v3"}, "tracking": {"version": "wc/v3"}}
+    optionMap['orders']['route'] = "orders/" + str(id)
     optionMap['stocks']['route'] = "products/" + str(id)
     optionMap['tracking']['route'] = "orders/" + str(id) + "/shipment-trackings"
     options = optionMap[callType]
     wcapi = API(
-        url="https://teamson.co.uk",
-        consumer_key=consumerKey,
-        consumer_secret=consumerSecret,
+        url = config['sites'][site]['url'],
+        consumer_key=config['sites'][site]['clientKey'],
+        consumer_secret=config['sites'][site]['clientSecret'],
         wp_api=True,
         version=options["version"]
     )
+    ret = ''
     try:
         ret = wcapi.post(options["route"], data).json()
     except:
