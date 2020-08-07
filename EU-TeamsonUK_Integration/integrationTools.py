@@ -27,15 +27,7 @@ def readFromTeamson (config, site, callType, orderId, logger):
     page = 1
     data = []
     try:
-        print(site)
-        print(callType)
-        print(options['route'])
-        print(page)
-        print(options['params'])
-        pageData = wcapi.get(options['route'] + "?page=" + str(page) + options['params'])
-        print (pageData)
-        pageData = pageData.json()
-        print(pageData)
+        pageData = wcapi.get(options['route'] + "?page=" + str(page) + options['params']).json()
     except requests.exceptions.HTTPError as err:
         logger.error("Failed to read data from Teamson...")
         sys.err(0)
@@ -47,13 +39,7 @@ def readFromTeamson (config, site, callType, orderId, logger):
         data[len(data):] += pageData
         if options['pagination']:
             try:
-                print(site)
-                print(callType)
-                print(options['route'])
-                print(page)
-                print(options['params'])
                 pageData = wcapi.get(options['route'] + "?page=" + str(page) + options['params']).json()
-                print(pageData)
             except:
                 logger.error("Failed to read next page from Teamson...")
                 pageData = []

@@ -89,10 +89,8 @@ def updateStockQty(config, stubGetStockInfoService, logger):
 
 '''---------------Update tracking in Teamson----------------'''
 def importTracking(config, stubGetTrackingNumber, stubGetTrackingService, stubGetDeliveryOrders):
-    print('TRACKING')
     DNS = readSAPTracking (stubGetDeliveryOrders, stubGetTrackingNumber)
     orderSitesList = config['orderSitesList']
-    print(orderSitesList)
     for site in orderSitesList:
         for trackingDict in DNS:
             DN = trackingDict['DN']
@@ -103,7 +101,6 @@ def importTracking(config, stubGetTrackingNumber, stubGetTrackingService, stubGe
             else:
                 provider = 'Tuffnells'
             dateTime = datetime.now().strftime('%m/%d/%Y')
-            print(orderId)
             trackingInfos = readFromTeamson(config, site, 'tracking', orderId,  logger)
             if trackingInfos == []:
                 if provider == 'Tuffnells' and len(trackingNum) < 10:
@@ -113,6 +110,7 @@ def importTracking(config, stubGetTrackingNumber, stubGetTrackingService, stubGe
                     'tracking_number': trackingNum,
                     'tracking_provider': provider
                     }
+
                     logger.debug(str(data))
                     ret = writeToTeamson(config, site, 'tracking', orderId, data, logger)
                     data = {
